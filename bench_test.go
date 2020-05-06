@@ -103,7 +103,7 @@ func BenchmarkSendMessage(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		srv.SendMessage("", SimpleMessage("hello"))
+		_ = srv.SendBroadcastMessage("", SimpleMessage("hello"))
 	}
 
 	srv.close()

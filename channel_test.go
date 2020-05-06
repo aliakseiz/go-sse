@@ -54,7 +54,7 @@ func TestSendMessage(t *testing.T) {
 
 	wg.Wait()
 
-	ch.removeClient(c)
+	ch.removeClient(c.uuid)
 
 	if 100 != <-msgCount {
 		t.Fatal("Wrong message count.")
