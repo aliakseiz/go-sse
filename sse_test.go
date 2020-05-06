@@ -56,7 +56,12 @@ func TestServer(t *testing.T) {
 			wg.Add(1)
 
 			// Create new client
-			c := newClient("", name)
+			c, err := newClient("", name)
+			if err != nil {
+				fmt.Printf("Cannot create client: %s\n", err.Error())
+				wg.Done()
+				continue
+			}
 			// Add client to current channel
 			ch.addClient(c)
 

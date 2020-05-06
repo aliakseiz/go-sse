@@ -6,7 +6,10 @@ import (
 )
 
 func TestSetLastId(t *testing.T) {
-	c := newClient("", "channel")
+	c, err := newClient("", "channel")
+	if err != nil {
+		t.Fatal("Cannot create client.")
+	}
 
 	go func() {
 		for msg := range c.send {

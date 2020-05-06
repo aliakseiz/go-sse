@@ -1,8 +1,8 @@
 # go-sse
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/alexandrevicenzi/go-sse)](https://goreportcard.com/report/github.com/alexandrevicenzi/go-sse)
-[![Build Status](https://travis-ci.org/alexandrevicenzi/go-sse.svg?branch=master)](https://travis-ci.org/alexandrevicenzi/go-sse)
-[![GoDoc](https://godoc.org/github.com/alexandrevicenzi/go-sse?status.svg)](http://godoc.org/github.com/alexandrevicenzi/go-sse)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aliakseiz/go-sse)](https://goreportcard.com/report/github.com/aliakseiz/go-sse)
+[![Build Status](https://travis-ci.org/aliakseiz/go-sse.svg?branch=master)](https://travis-ci.org/aliakseiz/go-sse)
+[![GoDoc](https://godoc.org/github.com/aliakseiz/go-sse?status.svg)](http://godoc.org/github.com/aliakseiz/go-sse)
 
 Server-Sent Events for Go
 
@@ -14,18 +14,23 @@ It's [supported](http://caniuse.com/#feat=eventsource) by all major browsers and
 
 `go-sse` is a small library to create a Server-Sent Events server in Go and works with Go 1.9+.
 
+Fork from [alexandrevicenzi/go-sse](https://github.com/alexandrevicenzi/go-sse).
+
 ## Features
 
-- Multiple channels (isolated)
-- Broadcast message to all channels
-- Custom headers (useful for CORS)
+- Multiple isolated channels
+- Message broadcasting to all channels
+- Message sending to specific clients in a channel
+- Customizable HTTP headers (useful for CORS)
+- External client Authorization support
+- Client disconnection monitoring
 - `Last-Event-ID` support (resend lost messages)
 - [Follow SSE specification](https://html.spec.whatwg.org/multipage/comms.html#server-sent-events)
 - Compatible with multiple Go frameworks
 
-## Instalation
+## Installation
 
-`go get github.com/alexandrevicenzi/go-sse`
+`go get github.com/aliakseiz/go-sse`
 
 ## Example
 
@@ -40,7 +45,7 @@ import (
     "strconv"
     "time"
 
-    "github.com/alexandrevicenzi/go-sse"
+    "github.com/aliakseiz/go-sse"
 )
 
 func main() {
@@ -73,7 +78,7 @@ e.onmessage = function(event) {
 };
 ```
 
-More examples available [here](https://github.com/alexandrevicenzi/go-sse/tree/master/_examples).
+More examples available [here](https://github.com/aliakseiz/go-sse/tree/master/_examples).
 
 ## License
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alexandrevicenzi/go-sse"
+	"github.com/aliakseiz/go-sse"
 	"github.com/gin-gonic/gin"
 )
 

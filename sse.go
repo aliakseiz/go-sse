@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,7 +10,11 @@ import (
 	"sync"
 )
 
-// Server represents a server sent events server.
+var (
+	errChannelWithoutClients = errors.New("channel has no clients")
+)
+
+// Server represents SSE server.
 type Server struct {
 	mu           sync.RWMutex
 	options      *Options
@@ -63,7 +68,8 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		}
 	}
 
-	if request.Method == "GET" {
+	switch request.Method {
+	case "GET":
 		h.Set("Content-Type", "text/event-stream")
 		h.Set("Cache-Control", "no-cache")
 		h.Set("Connection", "keep-alive")
@@ -78,13 +84,29 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		}
 
 		lastEventID := request.Header.Get("Last-Event-ID")
-		c := newClient(lastEventID, channelName)
+
+		c, err := newClient(lastEventID, channelName)
+		if err != nil {
+			http.Error(response, "Cannot create client.", http.StatusInternalServerError)
+
+			return
+		}
+
+		if s.options.AuthorizationFunc != nil {
+			if err = s.options.AuthorizationFunc(c.uuid, request); err != nil {
+				http.Error(response, "Not authorized.", http.StatusUnauthorized)
+
+				return
+			}
+		}
+
 		s.addClient <- c
 		closeNotify := request.Context().Done()
 
 		go func() {
 			<-closeNotify
 			s.removeClient <- c
+			s.options.DisconnectChan <- c.uuid
 		}()
 
 		response.WriteHeader(http.StatusOK)
@@ -95,33 +117,43 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 			fmt.Fprintf(response, msg.String())
 			flusher.Flush()
 		}
-	} else if request.Method != "OPTIONS" {
+
+	case "OPTIONS":
+		// Do nothing for OPTIONS request
+	default:
 		response.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-// SendMessage broadcast a message to all clients in a channel.
-// If channelName is an empty string, it will broadcast the message to all channels.
-func (s *Server) SendMessage(channelName string, message *Message) {
-	if len(channelName) == 0 {
-		s.options.Logger.Print("broadcasting message to all channels.")
+// SendBroadcastMessage broadcast a message to all clients in a channel.
+func (s *Server) SendBroadcastMessage(channel string, message *Message) error {
+	if ch, ok := s.getChannel(channel); ok {
+		ch.SendBroadcastMessage(message)
+		s.options.Logger.Printf("message sent to channel '%s'.", channel)
 
-		s.mu.RLock()
-
-		for _, ch := range s.channels {
-			ch.SendMessage(message)
-		}
-
-		s.mu.RUnlock()
-	} else if ch, ok := s.getChannel(channelName); ok {
-		ch.SendMessage(message)
-		s.options.Logger.Printf("message sent to channel '%s'.", channelName)
+		return nil
 	} else {
-		s.options.Logger.Printf("message not sent because channel '%s' has no clients.", channelName)
+		s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
+
+		return errChannelWithoutClients
 	}
 }
 
-// Restart closes all channels and clients and allow new connections.
+// SendMessageToClients broadcast a message to specific clients in a channel.
+func (s *Server) SendMessageToClients(channel string, uuids []string, message *Message) error {
+	if ch, ok := s.getChannel(channel); ok {
+		ch.SendMessageToClients(message, uuids)
+		s.options.Logger.Printf("message sent to channel '%s'.", channel)
+
+		return nil
+	} else {
+		s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
+
+		return errChannelWithoutClients
+	}
+}
+
+// Restart closes all channels and clients.
 func (s *Server) Restart() {
 	s.options.Logger.Print("restarting server.")
 	s.close()
@@ -150,6 +182,7 @@ func (s *Server) ClientCount() int {
 // HasChannel returns true if the channel associated with name exists.
 func (s *Server) HasChannel(name string) bool {
 	_, ok := s.getChannel(name)
+
 	return ok
 }
 
@@ -160,7 +193,7 @@ func (s *Server) GetChannel(name string) (*Channel, bool) {
 
 // Channels returns a list of all channels to the server.
 func (s *Server) Channels() []string {
-	channels := []string{}
+	var channels []string
 
 	s.mu.RLock()
 
@@ -204,6 +237,7 @@ func (s *Server) getChannel(name string) (*Channel, bool) {
 	s.mu.RLock()
 	ch, ok := s.channels[name]
 	s.mu.RUnlock()
+
 	return ch, ok
 }
 
@@ -233,7 +267,7 @@ func (s *Server) dispatch() {
 		// Client disconnected.
 		case c := <-s.removeClient:
 			if ch, exists := s.getChannel(c.channel); exists {
-				ch.removeClient(c)
+				ch.removeClient(c.uuid)
 				s.options.Logger.Printf("client disconnected from channel '%s'.", ch.name)
 
 				if ch.ClientCount() == 0 {
@@ -259,6 +293,7 @@ func (s *Server) dispatch() {
 			close(s.shutdown)
 
 			s.options.Logger.Print("server stopped.")
+
 			return
 		}
 	}

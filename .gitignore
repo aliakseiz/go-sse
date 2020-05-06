@@ -22,3 +22,10 @@ _testmain.go
 *.exe
 *.test
 *.prof
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/$PRODUCT_WORKSPACE_FILE$
+/.idea/.gitignore
+/.idea/go-sse.iml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml

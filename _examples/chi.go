@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alexandrevicenzi/go-sse"
+	"github.com/aliakseiz/go-sse"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )

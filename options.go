@@ -16,6 +16,12 @@ type Options struct {
 	ChannelNameFunc func(*http.Request) string
 	// All usage logs end up in Logger
 	Logger *log.Logger
+	// AuthorizationFunc allows to authorize client before adding to channel.
+	// No authorization by default and when error returned.
+	AuthorizationFunc func(string, *http.Request) error
+	// DisconnectChan channel that accepts client UUID to disconnect.
+	// Write-only
+	DisconnectChan chan<- string
 }
 
 func (opt *Options) hasHeaders() bool {

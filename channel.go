@@ -6,49 +6,69 @@ import (
 
 // Channel represents a server sent events channel.
 type Channel struct {
-	mu          sync.RWMutex
-	lastEventID string
 	name        string
-	clients     map[*Client]bool
+	lastEventID string
+	clients     struct {
+		sync.RWMutex                    // mutex to control `m` map usage
+		m            map[string]*Client // key:client UUID, value:Client
+	}
 }
 
 func newChannel(name string) *Channel {
 	return &Channel{
-		sync.RWMutex{},
-		"",
-		name,
-		make(map[*Client]bool),
+		name:        name,
+		lastEventID: "",
+		clients: struct {
+			sync.RWMutex
+			m map[string]*Client
+		}{sync.RWMutex{},
+			make(map[string]*Client),
+		},
 	}
 }
 
-// SendMessage broadcast a message to all clients in a channel.
-func (c *Channel) SendMessage(message *Message) {
+// SendBroadcastMessage broadcast a message to all clients in a channel.
+func (c *Channel) SendBroadcastMessage(message *Message) {
 	c.lastEventID = message.id
 
-	c.mu.RLock()
+	c.clients.RLock()
 
-	for c, open := range c.clients {
-		if open {
-			c.send <- message
+	for _, client := range c.clients.m {
+		client.send <- message
+	}
+
+	c.clients.RUnlock()
+}
+
+// SendMessageToClients broadcast a message to specific clients in a channel.
+func (c *Channel) SendMessageToClients(message *Message, uuids []string) {
+	c.lastEventID = message.id
+
+	c.clients.RLock()
+
+	for _, uuid := range uuids {
+		if client, ok := c.clients.m[uuid]; ok {
+			client.send <- message
 		}
 	}
 
-	c.mu.RUnlock()
+	c.clients.RUnlock()
 }
 
-// Close closes the channel and disconnect all clients.
+// Close the channel and disconnect all clients.
 func (c *Channel) Close() {
-	// Kick all clients of this channel.
-	for client := range c.clients {
-		c.removeClient(client)
+	for uuid := range c.clients.m {
+		c.removeClient(uuid)
 	}
 }
 
 // ClientCount returns the number of clients connected to this channel.
 func (c *Channel) ClientCount() int {
-	c.mu.RLock()
-	count := len(c.clients)
-	c.mu.RUnlock()
+	c.clients.RLock()
+
+	count := len(c.clients.m)
+
+	c.clients.RUnlock()
 
 	return count
 }
@@ -59,15 +79,21 @@ func (c *Channel) LastEventID() string {
 }
 
 func (c *Channel) addClient(client *Client) {
-	c.mu.Lock()
-	c.clients[client] = true
-	c.mu.Unlock()
+	c.clients.Lock()
+
+	c.clients.m[client.uuid] = client
+
+	c.clients.Unlock()
 }
 
-func (c *Channel) removeClient(client *Client) {
-	c.mu.Lock()
-	c.clients[client] = false
-	delete(c.clients, client)
-	c.mu.Unlock()
-	close(client.send)
+func (c *Channel) removeClient(uuid string) {
+	if client, ok := c.clients.m[uuid]; ok {
+		close(client.send)
+
+		c.clients.Lock()
+
+		delete(c.clients.m, uuid)
+
+		c.clients.Unlock()
+	}
 }

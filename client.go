@@ -1,18 +1,29 @@
 package sse
 
+import (
+	"github.com/google/uuid"
+)
+
 // Client represents a web browser connection.
 type Client struct {
+	uuid string
 	lastEventID,
 	channel string
 	send chan *Message
 }
 
-func newClient(lastEventID, channel string) *Client {
+func newClient(lastEventID, channel string) (*Client, error) {
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Client{
+		uuid.String(),
 		lastEventID,
 		channel,
 		make(chan *Message),
-	}
+	}, nil
 }
 
 // SendMessage sends a message to client.

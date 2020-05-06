@@ -24,7 +24,10 @@ func TestSendMessage(t *testing.T) {
 	lastID := make(chan string, 1)
 	msgCount := make(chan int, 1)
 
-	c := newClient("", "client")
+	c, err := newClient("", "client")
+	if err != nil {
+		t.Fatal("Cannot create client.")
+	}
 
 	go func() {
 		i := 0
@@ -43,7 +46,7 @@ func TestSendMessage(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 100; i++ {
-			ch.SendMessage(NewMessage(fmt.Sprintf("id_%d", i+1), "msg", "channel"))
+			ch.SendBroadcastMessage(NewMessage(fmt.Sprintf("id_%d", i+1), "msg", "channel"))
 		}
 
 		wg.Done()

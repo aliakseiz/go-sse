@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alexandrevicenzi/go-sse"
+	"github.com/aliakseiz/go-sse"
 	"github.com/labstack/echo/v4"
 )
 
