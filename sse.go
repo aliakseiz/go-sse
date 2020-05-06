@@ -132,11 +132,10 @@ func (s *Server) SendBroadcastMessage(channel string, message *Message) error {
 		s.options.Logger.Printf("message sent to channel '%s'.", channel)
 
 		return nil
-	} else {
-		s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
-
-		return errChannelWithoutClients
 	}
+	s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
+
+	return errChannelWithoutClients
 }
 
 // SendMessageToClients broadcast a message to specific clients in a channel.
@@ -146,11 +145,10 @@ func (s *Server) SendMessageToClients(channel string, uuids []string, message *M
 		s.options.Logger.Printf("message sent to channel '%s'.", channel)
 
 		return nil
-	} else {
-		s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
-
-		return errChannelWithoutClients
 	}
+	s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
+
+	return errChannelWithoutClients
 }
 
 // Restart closes all channels and clients.
