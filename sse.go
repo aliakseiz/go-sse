@@ -2,7 +2,6 @@ package sse
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -114,7 +113,7 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 
 		for msg := range c.send {
 			msg.retry = s.options.RetryInterval
-			fmt.Fprintf(response, msg.String())
+			response.Write(msg.Bytes())
 			flusher.Flush()
 		}
 
@@ -125,17 +124,11 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 	}
 }
 
-// SendBroadcastMessage broadcast a message to all clients in a channel.
-func (s *Server) SendBroadcastMessage(channel string, message *Message) error {
-	if ch, ok := s.getChannel(channel); ok {
+// SendBroadcastMessage broadcast a message to all clients in all channels.
+func (s *Server) SendBroadcastMessage(message *Message) {
+	for _, ch := range s.channels {
 		ch.SendBroadcastMessage(message)
-		s.options.Logger.Printf("message sent to channel '%s'.", channel)
-
-		return nil
 	}
-	s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
-
-	return errChannelWithoutClients
 }
 
 // SendMessageToClients broadcast a message to specific clients in a channel.
@@ -146,12 +139,28 @@ func (s *Server) SendMessageToClients(channel string, uuids []string, message *M
 
 		return nil
 	}
+
 	s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
 
 	return errChannelWithoutClients
 }
 
-// Restart closes all channels and clients.
+// SendMessage broadcast a message to all clients in a specific channel.
+// Returns error, when channel not found or it has no clients.
+func (s *Server) SendMessage(channel string, message *Message) error {
+	if ch, ok := s.getChannel(channel); ok {
+		ch.SendBroadcastMessage(message)
+		s.options.Logger.Printf("message sent to channel '%s'.", channel)
+
+		return nil
+	}
+
+	s.options.Logger.Printf("message not sent, channel '%s' has no clients.", channel)
+
+	return errChannelWithoutClients
+}
+
+// Restart closes all channels and clients and allow new connections.
 func (s *Server) Restart() {
 	s.options.Logger.Print("restarting server.")
 	s.close()
@@ -180,7 +189,6 @@ func (s *Server) ClientCount() int {
 // HasChannel returns true if the channel associated with name exists.
 func (s *Server) HasChannel(name string) bool {
 	_, ok := s.getChannel(name)
-
 	return ok
 }
 
@@ -235,7 +243,6 @@ func (s *Server) getChannel(name string) (*Channel, bool) {
 	s.mu.RLock()
 	ch, ok := s.channels[name]
 	s.mu.RUnlock()
-
 	return ch, ok
 }
 
@@ -291,7 +298,6 @@ func (s *Server) dispatch() {
 			close(s.shutdown)
 
 			s.options.Logger.Print("server stopped.")
-
 			return
 		}
 	}

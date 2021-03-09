@@ -43,7 +43,7 @@ func main() {
 		for {
 			msg := sse.SimpleMessage(time.Now().Format("2006/02/01/ 15:04:05"))
 
-			if err := s.SendBroadcastMessage("/events/channel-1", msg); err != nil {
+			if err := s.SendMessage("/events/channel-1", msg); err != nil {
 				log.Printf("Failed to send broadcast message: %s", err.Error())
 			}
 
@@ -56,7 +56,7 @@ func main() {
 		for {
 			i++
 
-			if err := s.SendBroadcastMessage("/events/channel-2", sse.SimpleMessage(strconv.Itoa(i))); err != nil {
+			if err := s.SendMessage("/events/channel-2", sse.SimpleMessage(strconv.Itoa(i))); err != nil {
 				log.Printf("Failed to send broadcast message: %s", err.Error())
 			}
 
